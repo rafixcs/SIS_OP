@@ -4,65 +4,66 @@
 
 #include "GerenteMemoria.hpp"
 
-MaquinaVirtual * mMV1 = new MaquinaVirtual();
+bool bFrameOcupado[64];
 
-const int nParticoes = TAM_MEM / TAM_PARTICAO;
-
-bool bParticaoOcupada[nParticoes];    // Particao n esta livre ou ocupada
-
-//-------------------------------------------
-// Retorna a primeira particao livre que achar
-int achaParticao()
+int FramesDisp(int nNPaginas)
 {
-    for(int i = 0; i < nParticoes; i++)
-        if(bParticaoOcupada[i] == false)
-            return i;
+    int nvFrames[nNPaginas + 1];
 
-    return -1;
-}
+    memset(nvFrames, 0, sizeof(nvFrames));
 
-//-------------------------------------------
-// Acha uma particao livre, aloca e retorna qual a particao
-// para colocar o programa
-int alocaParticao()
-{
-    int nParticaoPos = achaParticao();
+    int j = 0;
 
-    if(nParticaoPos > -1)
+    for(int i = 0; i < nNPaginas; i++)
     {
-        bParticaoOcupada[nParticaoPos] = true;
-        return nParticaoPos;
+        if(bFrameOcupado[i] == false)
+        {
+            bFrameOcupado[i] = true;
+            nvFrames[j] = i;
+            j++;
+        }
     }
-    // Returna -1 se nao ha particao livre
-    return -1;
+
+    nvFrames[j] =
+
+    return nvFrames;
 }
 
-
-//-------------------------------------------
-void liberaParticao(int p)
+int carregaNaMemoria(const std::string &fileName)
 {
-    bParticaoOcupada[p] = false;
-}
+    FILE *fp;
 
-//-------------------------------------------
-// Carga do programa
-// Retorna -1 se nao existe particao disponivel
-// Retorna -2 se nao cabe na particao
-
-int cargaProg(const std::string name_file)
-{
-    int nParticaoPos = alocaParticao();
-
-    if(nParticaoPos > -1)
+    if (!(fp = fopen(fileName.c_str(), "r")))
     {
-        int base = TAM_PARTICAO * nParticaoPos;
-        int limite = base + 127;
-
-        if(mMV1->readFile(name_file, base, limite) == false)
-            return -2;
+        printf("Nao foi possivel abrir o arquivo!\n");
+        return -1;
     }
     else
-        return -1;
+    {
+        int i = 0;
+        int nNPaginas = 0;
 
-    return nParticaoPos;
+        fscanf(fp, "%d", &nNPaginas);
+
+        int nvPaginas[nNPaginas] = FramesDisp(nNPaginas);
+
+        while (!feof(fp))
+        {
+            int nPosFrame = nvPaginas[i];
+
+            for (int j = 0; j < 16; j++)
+                fscanf(fp, "%d", &nMemoria[j * nPosFrame]);
+
+            int i++;
+        }
+
+        fclose(fp);
+
+        return nNPaginas;
+    }
+}
+
+void cargaProg(const std::string name_file)
+{
+    int carregaNaMemoria(name_file);
 }

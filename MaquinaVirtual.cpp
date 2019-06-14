@@ -19,36 +19,6 @@ MaquinaVirtual::MaquinaVirtual()
     }
 }
 
-bool MaquinaVirtual::readFile(const std::string &fileName, int base, int limite)
-{
-    FILE *fp;
-
-    if (!(fp = fopen(fileName.c_str(), "r")))
-    {
-        printf("Nao foi possivel abrir o arquivo!\n");
-        return false;
-    }
-    else
-    {
-        int i = 0;
-
-        while (!feof(fp) || i >= limite)
-        {
-            fscanf(fp, "%d", &nMemoria[i + base]);
-
-            i++;
-        }
-
-        fclose(fp);
-
-        // Se o programa eh maior que a particao retorna false
-        if (i >= limite)
-            return false;
-        else
-            return true;
-    }
-}
-
 short MaquinaVirtual::decoInstrucao(int a)
 {
     a >>= 1;

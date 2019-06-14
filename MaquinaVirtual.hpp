@@ -25,7 +25,6 @@ public:
     short indice26_24(int a);
     short pegaParametros(int a);
     short decoInstrucao(int a);
-    bool readFile(const std::string &fileName, int base, int limite);
     int executaInst(int base);
 
     short getPC() { return nPc; }

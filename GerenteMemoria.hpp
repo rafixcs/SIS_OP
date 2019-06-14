@@ -1,11 +1,6 @@
 #include "MaquinaVirtual.hpp"
 
-#define TAM_PARTICAO 128
+#include <cstring>
 
-int achaParticao();
-
-int alocaParticao();
-
-void liberaParticao(int p);
-
-int cargaProg(const std::string name_file);
+#define N_POSICOES 16
+#define N_FRAMES 64
