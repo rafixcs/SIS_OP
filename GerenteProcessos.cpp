@@ -115,8 +115,6 @@ void finalizaProcesso()
 {
     std::cout << "\n\nProcesso " << processRunning->getID() << " terminado.\n";
 
-    int base = processRunning->getBase();
-
     liberaParticao(processRunning->getID());
 
     processRunning = nullptr;

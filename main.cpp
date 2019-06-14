@@ -13,7 +13,7 @@ std::string nomeProg(short option)
     switch(option)
         {
         case 1:
-            file_name = "Fibonacci10.txt";
+            file_name = "Fibonacci10_2.txt";
             break;
         case 2:
             file_name = "FibonacciN2.txt";
@@ -97,8 +97,11 @@ void threadCPU()
 bool testaEndereco(int nEndereco)
 {
     int n = listaBlocked->front().getBase() + 127;
+    int bas = listaBlocked->front().getBase();
 
-    return (nEndereco > n) ? false : true;
+    // retorna falso se o endereco for menor ou maior do que
+    // o endereco que a particao esta ocupando
+    return (nEndereco > n || nEndereco < bas ) ? false : true;
 }
 
 void liberaFrontListBlocked()
