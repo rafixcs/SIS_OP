@@ -1,4 +1,11 @@
 #include "MaquinaVirtual.hpp"
 
-short cargaProg(const std::string name_file, PCB * pcb);
-void liberaFrames(PCB * pRunnig);
+#define TAM_PARTICAO 128
+
+int achaParticao();
+
+int alocaParticao();
+
+void liberaParticao(int p);
+
+int cargaProg(const std::string name_file);

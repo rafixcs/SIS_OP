@@ -2,8 +2,6 @@
 #include "BitOperators.hpp"
 #include "Instrucoes.hpp"
 
-extern PCB * processRunning;
-
 MaquinaVirtual::MaquinaVirtual()
 {
     nPc = 0;
@@ -18,6 +16,36 @@ MaquinaVirtual::MaquinaVirtual()
             nRegs[i] = 0;
 
         nMemoria[i] = 0;
+    }
+}
+
+bool MaquinaVirtual::readFile(const std::string &fileName, int base, int limite)
+{
+    FILE *fp;
+
+    if (!(fp = fopen(fileName.c_str(), "r")))
+    {
+        printf("Nao foi possivel abrir o arquivo!\n");
+        return false;
+    }
+    else
+    {
+        int i = 0;
+
+        while (!feof(fp) || i >= limite)
+        {
+            fscanf(fp, "%d", &nMemoria[i + base]);
+
+            i++;
+        }
+
+        fclose(fp);
+
+        // Se o programa eh maior que a particao retorna false
+        if (i >= limite)
+            return false;
+        else
+            return true;
     }
 }
 
@@ -53,9 +81,8 @@ short MaquinaVirtual::pegaParametros(int a)
     return a;
 }
 
-int MaquinaVirtual::executaInst(int * offset, int * nFrame)
+int MaquinaVirtual::executaInst(int base)
 {
-    int tst = 0;
 
     // Decodificacao da instrucao
     nTipoInst = decoInstrucao(nMemoria[nPc]);
@@ -87,98 +114,23 @@ int MaquinaVirtual::executaInst(int * offset, int * nFrame)
         // Instrucoes de pulo condicional e incondicional
 
     case JMP:
-    {
-        int a = pegaParametros(nMemoria[nPc]);
-        *(offset) = a % N_FPOSICOES;
-        *(nFrame) = a / N_FPOSICOES;
-        nPc = processRunning->getPageTablePos(*nFrame) * N_FPOSICOES + *(offset) - 1;
-        processRunning->setFrameAtual(*nFrame);
+        nPc = pegaParametros(nMemoria[nPc]) - 1 + base;
         break;
-    }
     case JMPI:
-    {
-        int a = nRegs[nIRs];
-        *(offset) = a % N_FPOSICOES;
-        *(nFrame) = a / N_FPOSICOES;
-        nPc = processRunning->getPageTablePos(*nFrame) * N_FPOSICOES + *(offset) - 1;
-        processRunning->setFrameAtual(*nFrame);
+        nPc = nRegs[nIRs] - 1 + base;
         break;
-    }
     case JMPIG:
-    {
         if (nRegs[nIRc] > 0)
-        {
-            int a = nRegs[nIRs];
-            *(offset) = a % N_FPOSICOES;
-            *(nFrame) = a / N_FPOSICOES;
-            nPc = processRunning->getPageTablePos(*nFrame) * N_FPOSICOES + *(offset);
-            processRunning->setFrameAtual(*nFrame);
-        }
-        else
-            if((*offset) < N_FPOSICOES - 1)
-            {
-                *(offset)++;
-                incrementaPC(*offset);
-            }
-            else
-            {
-                *(offset) = 0;
-                *(nFrame)++;
-                processRunning->setFrameAtual(*nFrame);
-                incrementaPC(*offset);
-            }
+            nPc = nRegs[nIRs] - 1 + base;
         break;
-    }
     case JMPIL:
-    {
         if (nRegs[nIRc] < 0)
-        {
-            int a = nRegs[nIRs];
-            *(offset) = a % N_FPOSICOES;
-            *(nFrame) = a / N_FPOSICOES;
-            nPc = processRunning->getPageTablePos(*nFrame) * N_FPOSICOES + *(offset);
-            processRunning->setFrameAtual(*nFrame);
-        }
-        else
-            if((*offset) < N_FPOSICOES - 1)
-            {
-                *(offset)++;
-                incrementaPC(*offset);
-            }
-            else
-            {
-                *(offset) = 0;
-                *(nFrame)++;
-                processRunning->setFrameAtual(*nFrame);
-                incrementaPC(*offset);
-            }
+            nPc = nRegs[nIRs] - 1 + base;
         break;
-    }
     case JMPIE:
-    {
         if (nRegs[nIRc] == 0)
-        {
-            int a = nRegs[nIRs];
-            *(offset) = a % N_FPOSICOES;
-            *(nFrame) = a / N_FPOSICOES;
-            nPc = processRunning->getPageTablePos(*nFrame) * N_FPOSICOES + *(offset);
-            processRunning->setFrameAtual(*nFrame);
-        }
-        else
-            if((*offset) < N_FPOSICOES - 1)
-            {
-                *(offset)++;
-                incrementaPC(*offset);
-            }
-            else
-            {
-                *(offset) = 0;
-                *(nFrame)++;
-                processRunning->setFrameAtual(*nFrame);
-                incrementaPC(*offset);
-            }
+            nPc = nRegs[nIRs] - 1 + base;
         break;
-    }
     case TRAP:
         nR1 = nRegs[nIRs];
         nR2 = nRegs[nIRc];
@@ -203,24 +155,10 @@ int MaquinaVirtual::executaInst(int * offset, int * nFrame)
         nRegs[nIRd] = pegaParametros(nMemoria[nPc]);
         break;
     case LDD: /// Load direct from data memory
-    {
-        int a = pegaParametros(nMemoria[nPc]);
-        int nOffset = a % N_FPOSICOES;
-        int frame = a / N_FPOSICOES;
-        short addrs = processRunning->getPageTablePos(frame) * N_FPOSICOES + nOffset ;
-        tst = addrs;
-        nRegs[nIRd] = nMemoria[addrs];
-    }
+        nRegs[nIRd] = nMemoria[pegaParametros(nMemoria[nPc]) + base];
         break;
     case STD: /// Store direct to data memory
-    {
-        int a = pegaParametros(nMemoria[nPc]);
-        int nOffset = a % N_FPOSICOES;
-        int frame = a / N_FPOSICOES;
-        short addrs = processRunning->getPageTablePos(frame) * N_FPOSICOES + nOffset;
-        tst = addrs;
-        nMemoria[addrs] = nRegs[nIRd];
-    }
+        nMemoria[pegaParametros(nMemoria[nPc]) + base] = nRegs[nIRd];
         break;
 
         // Instrucoes tipo a registrador 2
@@ -238,22 +176,10 @@ int MaquinaVirtual::executaInst(int * offset, int * nFrame)
         operOR(nRegs[nIRd], nRegs[nIRs]);
         break;
     case LDX: /// Indirect load from memory
-    {
-        int nOffset = nRegs[nIRs] % N_FPOSICOES;
-        int frame = nRegs[nIRs] / N_FPOSICOES;
-        short addrs = processRunning->getPageTablePos(frame) * N_FPOSICOES + nOffset;
-        tst = addrs;
-        nRegs[nIRd] = nMemoria[addrs];
-    }
+        nRegs[nIRd] = nMemoria[nRegs[nIRs] + base];
         break;
     case STX: /// Indirect storage to memory
-    {
-        int nOffset = nRegs[nIRd] % N_FPOSICOES;
-        int frame = nRegs[nIRd] / N_FPOSICOES;
-        short addrs = processRunning->getPageTablePos(frame) * N_FPOSICOES + nOffset;
-        tst = addrs;
-        nMemoria[addrs] = nRegs[nIRs];
-    }
+        nMemoria[nRegs[nIRd] + base] = nRegs[nIRs];
         break;
     case MULT:
         nRegs[nIRd] *= nRegs[nIRs];
@@ -285,28 +211,15 @@ int MaquinaVirtual::executaInst(int * offset, int * nFrame)
         for(int i = 0 ; i < REG_QNT ; i++)
             std::cout << "Reg<"<< i << ">: " << nRegs[i] << std::endl;
         std::cout << "Instruction: " << nTipoInst << std::endl;
-        std::cout << "PC: " << nPc << std::endl;
+        std::cout << "PC: " << nPc + base << std::endl;
         std::cout << "RS: " << nIRs << std::endl;
         std::cout << "RD: " << nIRd << std::endl;
         std::cout << "RC: " << nIRc << std::endl;
         std::cout << "R1: " << nR1 << std::endl;
         std::cout << "R2: " << nR2 << std::endl;
-        if(nTipoInst == STX || nTipoInst == STD || nTipoInst == LDX || nTipoInst == LDD)
-            printf("Memoria<%d>: %#08x", tst, nMemoria[tst]);
-        else
-            printf("Memoria<%d>: %#08x", nPc, nMemoria[nPc]);
+        printf("Memoria<%d>: %#08x", nIRd, nMemoria[nPc]);
         std::cout << "\n===================================\n\n\n";
 
 
    return nTipoInst;
-}
-
-bool MaquinaVirtual::validaEndRW(int endereco, int base)
-{
-    return (endereco > base + 127 || endereco < base + 100) ? false : true;
-}
-
-void MaquinaVirtual::incrementaPC(int i)
-{
-    nPc = processRunning->getFrameAtual() * N_FPOSICOES + i;
 }

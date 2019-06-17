@@ -1,86 +1,68 @@
 //--------------------------------
-// GERENTE DE MEMORIA PAGINADA
+// GERENTE DE MEMORIA
 //--------------------------------
 
 #include "GerenteMemoria.hpp"
 
 MaquinaVirtual * mMV1 = new MaquinaVirtual();
-bool bFrameOcupado[N_FRAMES];
 
-bool framesLivres(int nNPaginas, PCB * pcb)
+const int nParticoes = TAM_MEM / TAM_PARTICAO;
+
+bool bParticaoOcupada[nParticoes];    // Particao n esta livre ou ocupada
+
+//-------------------------------------------
+// Retorna a primeira particao livre que achar
+int achaParticao()
 {
-    for(int i = 0; i < N_FRAMES; i++)
-    {
-        if(bFrameOcupado[i] == false)
-        {
-           bFrameOcupado[i] = true;
-           pcb->setPageTablePush_Back(i);
-        }
-        if(pcb->getPageTableSize() == nNPaginas) break;
-    }
+    for(int i = 0; i < nParticoes; i++)
+        if(bParticaoOcupada[i] == false)
+            return i;
 
-    // Se a quantidade de frames disponiveis para alocar nao for a mesma
-    // da quantidade de paginas/frames requeridas retorna false
-    return (pcb->getPageTableSize() < nNPaginas) ? false : true;
+    return -1;
 }
 
-short carregaNaMemoria(const std::string &fileName, PCB * pcb)
+//-------------------------------------------
+// Acha uma particao livre, aloca e retorna qual a particao
+// para colocar o programa
+int alocaParticao()
 {
-    FILE *fp;
+    int nParticaoPos = achaParticao();
 
-    if (!(fp = fopen(fileName.c_str(), "r")))
+    if(nParticaoPos > -1)
     {
-        std::cerr << ">> Nao foi possivel abrir o arquivo!" << std::endl;
-        return -1;
+        bParticaoOcupada[nParticaoPos] = true;
+        return nParticaoPos;
+    }
+    // Returna -1 se nao ha particao livre
+    return -1;
+}
+
+
+//-------------------------------------------
+void liberaParticao(int p)
+{
+    bParticaoOcupada[p] = false;
+}
+
+//-------------------------------------------
+// Carga do programa
+// Retorna -1 se nao existe particao disponivel
+// Retorna -2 se nao cabe na particao
+
+int cargaProg(const std::string name_file)
+{
+    int nParticaoPos = alocaParticao();
+
+    if(nParticaoPos > -1)
+    {
+        int base = TAM_PARTICAO * nParticaoPos;
+        int limite = base + 127;
+
+        if(mMV1->readFile(name_file, base, limite) == false)
+            return -2;
     }
     else
-    {
-        int nNPaginas;
+        return -1;
 
-        fscanf(fp, "%d", &nNPaginas);
-
-        // Se o retorno da funcao for falsa significa que a quantidade de
-        // frames para alocar nao é o suficiente
-        if(!framesLivres(nNPaginas, pcb))
-        {
-            liberaFrames(pcb);
-            fclose(fp);
-            return -2;
-        }
-
-        int i = 0;
-        int j = 0;
-        int nPosFrame = pcb->getPageTablePos(i);
-
-        while (!feof(fp))
-        {
-            if(j > N_FPOSICOES - 1)
-            {
-                j = 0;
-                i++;
-                nPosFrame = pcb->getPageTablePos(i);
-            }
-
-            int dado;
-            fscanf(fp, "%d", &dado);
-
-            mMV1->setMEM_Pos(nPosFrame * N_FPOSICOES + j, dado);
-            j++;
-        }
-
-        fclose(fp);
-
-        return 1;
-    }
-}
-
-short cargaProg(const std::string name_file, PCB * pcb)
-{
-    return carregaNaMemoria(name_file, pcb);
-}
-
-void liberaFrames(PCB * pRunnig)
-{
-    for(int i = 0; i < pRunnig->getPageTableSize(); i++)
-        bFrameOcupado[pRunnig->getPageTablePos(i)] = false;
+    return nParticaoPos;
 }

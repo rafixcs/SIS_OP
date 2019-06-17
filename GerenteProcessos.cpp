@@ -10,8 +10,6 @@ extern bool bRodandoCPU;
 
 PCB * processRunning = nullptr;
 
-int nIDProcesses = 0;
-
 std::list<PCB> * listaReady = new std::list<PCB>;
 std::list<PCB> * listaBlocked = new std::list<PCB>;
 
@@ -79,10 +77,10 @@ void trataInterrupcao(int teste)
                 mMV1->setR1(processRunning->getR1());
                 mMV1->setR2(processRunning->getR2());
                 // --------------------------------------------------------
+
             }
             else if(teste == 5)
             {
-                std::cout << "Teste TRAP\n";
                 processRunning = nullptr;
             }
         }
@@ -94,22 +92,17 @@ void trataInterrupcao(int teste)
 
 int criaProcesso(const std::string progName)
 {
-    PCB * pcb = new PCB();
+    int nPos = cargaProg(progName);
 
-    short teste = cargaProg(progName, pcb);
-    if(teste < 0)
-        pcb = nullptr;
+    if ( nPos < 0 )
+        return nPos;
     else
     {
-        pcb->setID(nIDProcesses);
-        pcb->setPC(pcb->getPageTablePos(0) * N_FPOSICOES);
-        pcb->setFrameAtual(pcb->getPageTablePos(0));
+        PCB * pcb = new PCB(nPos, nPos*TAM_PARTICAO, nPos*TAM_PARTICAO + TAM_PARTICAO - 1, READY);
         listaReady->push_back(*pcb);
     }
 
-    nIDProcesses++;
-
-    return teste;
+    return 1;
 }
 
 void testaInterrupcao()
@@ -120,12 +113,22 @@ void testaInterrupcao()
 
 void finalizaProcesso()
 {
-    std::cout << "\n\nProcesso " << processRunning->getID() << " terminado.\n";
+    std::cout << "Processo " << processRunning->getID() << " terminado.\n";
+    std::cout << "Imprimindo area de dados..." << std::endl;
 
-    for(int i = 0; i < 128; i++)
-        printf("\Memoria<%d>: %#08x\n", i, mMV1->getMEM_Pos(i));
+    int base = processRunning->getBase();
 
-    liberaFrames(processRunning);
+
+    // Area de dados a e a soma da base com 100
+    for(int i = 100 ; i < 128 ; i++)
+        std::cout << "Memoria<" << i + base << ">: "
+                  << mMV1->getMEM_Pos(i + base) << std::endl;
+
+    std::cout << "=======================================================" << std::endl;
+    std::cout << std::endl;
+    std::cout << std::endl;
+
+    liberaParticao(processRunning->getID());
 
     processRunning = nullptr;
 }

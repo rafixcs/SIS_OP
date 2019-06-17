@@ -1,13 +1,9 @@
 #define TAM_MEM 1024
 #define REG_QNT 8
-#define N_FPOSICOES 16
-#define N_FRAMES 64
 
 #include <iostream>
 #include <stdio.h>
 #include <string.h>
-#include <vector>
-#include "BlocoControleProcessos.hpp"
 
 class MaquinaVirtual{
 private:
@@ -21,7 +17,6 @@ private:
     unsigned int nMemoria[TAM_MEM];
     int nRegs[REG_QNT];
 
-    bool validaEndRW(int endereco, int base);
 public:
     MaquinaVirtual();
 
@@ -29,7 +24,8 @@ public:
     short indice26_24(int a);
     short pegaParametros(int a);
     short decoInstrucao(int a);
-    int executaInst(int * offset, int * nFrame);
+    bool readFile(const std::string &fileName, int base, int limite);
+    int executaInst(int base);
 
     short getPC() { return nPc; }
     short getTipoInst() { return nTipoInst; }
@@ -46,7 +42,5 @@ public:
     void setPC(int n) { nPc = n; }
     void setR1(int n) { nR1 = n; }
     void setR2(int n) { nR2 = n; }
-
-    void incrementaPC(int i);
 
 };

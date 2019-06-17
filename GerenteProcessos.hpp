@@ -2,6 +2,7 @@
 // GERENTE DE PROCESSOS.H
 //--------------------------------
 
+#include "BlocoControleProcessos.hpp"
 #include "GerenteMemoria.hpp"
 #include <list>
 #include <iterator>
