@@ -2,7 +2,7 @@
 #include "Instrucoes.hpp"
 #include <thread>
 
-#define CPU_DELAY 50
+#define CPU_DELAY 10
 
 bool bRodandoCPU = true;
 
@@ -31,15 +31,6 @@ extern std::list<PCB> * listaReady;
 extern PCB * processRunning;
 extern std::list<PCB> * listaBlocked;
 
-//-------------------------------------------------------
-// operacoes sobre a cpu
-//-------------------------------------------------------
-
-void incrementaPC()
-{
-    mMV1->setPC(mMV1->getPC() + 1);
-}
-
 
 /*** testePC testa o PC para ver se nao esta apontando para algum lugar indevido
  * retorna false se esta apontando para algum lugar indevido
@@ -47,10 +38,8 @@ void incrementaPC()
 */
 bool testePC()
 {
-    // Base + 100 = espaco reservado para os dados do programa
-
-    return ( mMV1->getPC() < processRunning->getBase() ||
-        mMV1->getPC() >= processRunning->getBase() + 100) ? false : true;
+    return ( mMV1->getPC() < processRunning->getFrameAtual() * N_FPOSICOES + N_FPOSICOES &&
+                mMV1->getPC() >= processRunning->getFrameAtual() * N_FPOSICOES) ? false : true;
 }
 
 //-------------------------------------------------------
@@ -59,42 +48,66 @@ bool testePC()
 
 void threadCPU()
 {
+    int nFrameOffset = 1;
+    int *  ptrI = &nFrameOffset;
+    int nWichFrame = 0;
+    int * ptrJ = &nWichFrame;
+
     while(bRodandoCPU)
     {
         testaInterrupcao();
 
         if(processRunning != nullptr)   // Se processRunning é nullptr significa que nao ha processo rodando
         {
-            int instrucao = mMV1->executaInst(processRunning->getBase());
+            int instrucao = mMV1->executaInst(ptrI, ptrJ);
 
             // Verifica se o PC esta apontando para algum lugar que nao deveria
             // e se ja chegou ao fim do programa
-            if(testePC() == false || instrucao == STOP)
+            if(instrucao == STOP)
             {
                 finalizaProcesso();
             }
+            else if(instrucao <= JMPIE) ;
             else if(instrucao == TRAP)
             {
-                incrementaPC();
+                if(nFrameOffset > N_FPOSICOES - 1)
+                {
+                    nFrameOffset = 0;
+                    processRunning->setFrameAtual(nWichFrame);
+                    nWichFrame++;
+                }
+
                 trataInterrupcao(TRAP);
+                mMV1->incrementaPC(nFrameOffset);
+                nFrameOffset++;
             }
             else
             {
-                incrementaPC();
-
-                // Atraso da CPU para melhor percpcao do escalonamento
-                sleepcp(CPU_DELAY);
+                if(nFrameOffset > N_FPOSICOES - 1)
+                {
+                    nFrameOffset = 0;
+                    nWichFrame++;
+                    processRunning->setFrameAtual(nWichFrame);
+                }
+                mMV1->incrementaPC(nFrameOffset);
+                nFrameOffset++;
             }
+
+            std::cout << ">>> Frame: " << nWichFrame << std::endl;
+            std::cout << ">>> Frame Offset: " << nFrameOffset << std::endl;
+
+            // Atraso da CPU para melhor percpcao do escalonamento
+            sleepcp(CPU_DELAY * 100);
         }
     }
 }
 //-------------------------------------------------------
 
 //-------------------------------------------------------
-// THREAD JUNTOS E SHELL_O_NOW
+// THREAD SHELL
 //-------------------------------------------------------
 
-bool testaEndereco(int nEndereco)
+/*bool testaEndereco(int nEndereco)
 {
     int n = listaBlocked->front().getBase() + 127;
     int bas = listaBlocked->front().getBase();
@@ -102,7 +115,7 @@ bool testaEndereco(int nEndereco)
     // retorna falso se o endereco for menor ou maior do que
     // o endereco que a particao esta ocupando
     return (nEndereco > n || nEndereco < bas ) ? false : true;
-}
+}*/
 
 void liberaFrontListBlocked()
 {
@@ -161,14 +174,13 @@ void threadShell()
         {
             if(listaBlocked->empty())
                 std::cout << ">> Nenhum processo pedindo entrada ou saida de dado!\n";
-
             else
             {
                 int dado;
 
-                int nAddress = listaBlocked->front().getR2() + listaBlocked->front().getBase();
+                int nAddress = listaBlocked->front().getR2(); //+ listaBlocked->front().getBase();
 
-                if(!testaEndereco(nAddress))
+                if(0)    // !testaEndereco(nAddress)
                     std::cout << ">> Local de memoria não acessavel!\n";
                 else
                 {
@@ -203,9 +215,9 @@ void threadTRAPPrint()
             {
                 std::cout << "\n\n>> Processo " << listaBlocked->front().getID() << std::endl;
 
-                int nAddress = listaBlocked->front().getR2() + listaBlocked->front().getBase();
+                int nAddress = listaBlocked->front().getR2(); //+ listaBlocked->front().getBase();
 
-                if(!testaEndereco(nAddress))
+                if(0) // !testaEndereco(nAddress)
                     std::cout << ">> Local de memoria não acessavel!\n";
                 else
                 {
@@ -226,7 +238,7 @@ int main()
 {
 
     std::cout << "==============================================\n";
-    std::cout << ">> Maquina Virtual 1.4 - Sistemas Operacionais\n";
+    std::cout << ">> Maquina Virtual 1.5 - Sistemas Operacionais\n";
     std::cout << "==============================================\n\n";
 
     std::thread tTimer(timerFunc);
@@ -243,7 +255,7 @@ int main()
     tTrapPrint.join();
     std::cout << "TRAP cl\n";
 
-    std::cout << "\n\n>> Encerrando a execucao da MV 1.4\n\n";
+    std::cout << "\n\n>> Encerrando a execucao da MV 1.5\n\n";
 
     return 0;
 }

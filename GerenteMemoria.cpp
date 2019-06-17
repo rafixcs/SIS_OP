@@ -1,69 +1,86 @@
 //--------------------------------
-// GERENTE DE MEMORIA
+// GERENTE DE MEMORIA PAGINADA
 //--------------------------------
 
 #include "GerenteMemoria.hpp"
 
-bool bFrameOcupado[64];
+MaquinaVirtual * mMV1 = new MaquinaVirtual();
+bool bFrameOcupado[N_FRAMES];
 
-int FramesDisp(int nNPaginas)
+bool framesLivres(int nNPaginas, PCB * pcb)
 {
-    int nvFrames[nNPaginas + 1];
-
-    memset(nvFrames, 0, sizeof(nvFrames));
-
-    int j = 0;
-
-    for(int i = 0; i < nNPaginas; i++)
+    for(int i = 0; i < N_FRAMES; i++)
     {
         if(bFrameOcupado[i] == false)
         {
-            bFrameOcupado[i] = true;
-            nvFrames[j] = i;
-            j++;
+           bFrameOcupado[i] = true;
+           pcb->setPageTablePush_Back(i);
         }
+        if(pcb->getPageTableSize() == nNPaginas) break;
     }
 
-    nvFrames[j] =
-
-    return nvFrames;
+    // Se a quantidade de frames disponiveis para alocar nao for a mesma
+    // da quantidade de paginas/frames requeridas retorna false
+    return (pcb->getPageTableSize() < nNPaginas) ? false : true;
 }
 
-int carregaNaMemoria(const std::string &fileName)
+short carregaNaMemoria(const std::string &fileName, PCB * pcb)
 {
     FILE *fp;
 
     if (!(fp = fopen(fileName.c_str(), "r")))
     {
-        printf("Nao foi possivel abrir o arquivo!\n");
+        std::cerr << ">> Nao foi possivel abrir o arquivo!" << std::endl;
         return -1;
     }
     else
     {
-        int i = 0;
-        int nNPaginas = 0;
+        int nNPaginas;
 
         fscanf(fp, "%d", &nNPaginas);
 
-        int nvPaginas[nNPaginas] = FramesDisp(nNPaginas);
+        // Se o retorno da funcao for falsa significa que a quantidade de
+        // frames para alocar nao é o suficiente
+        if(!framesLivres(nNPaginas, pcb))
+        {
+            liberaFrames(pcb);
+            fclose(fp);
+            return -2;
+        }
+
+        int i = 0;
+        int j = 0;
+        int nPosFrame = pcb->getPageTablePos(i);
 
         while (!feof(fp))
         {
-            int nPosFrame = nvPaginas[i];
+            if(j > N_FPOSICOES - 1)
+            {
+                j = 0;
+                i++;
+                nPosFrame = pcb->getPageTablePos(i);
+            }
 
-            for (int j = 0; j < 16; j++)
-                fscanf(fp, "%d", &nMemoria[j * nPosFrame]);
+            int dado;
+            fscanf(fp, "%d", &dado);
 
-            int i++;
+            mMV1->setMEM_Pos(nPosFrame * N_FPOSICOES + j, dado);
+            j++;
         }
 
         fclose(fp);
 
-        return nNPaginas;
+        return 1;
     }
 }
 
-void cargaProg(const std::string name_file)
+short cargaProg(const std::string name_file, PCB * pcb)
 {
-    int carregaNaMemoria(name_file);
+    return carregaNaMemoria(name_file, pcb);
+}
+
+void liberaFrames(PCB * pRunnig)
+{
+    for(int i = 0; i < pRunnig->getPageTableSize(); i++)
+        bFrameOcupado[pRunnig->getPageTablePos(i)] = false;
 }

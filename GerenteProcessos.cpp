@@ -10,6 +10,8 @@ extern bool bRodandoCPU;
 
 PCB * processRunning = nullptr;
 
+int nIDProcesses = 0;
+
 std::list<PCB> * listaReady = new std::list<PCB>;
 std::list<PCB> * listaBlocked = new std::list<PCB>;
 
@@ -77,10 +79,10 @@ void trataInterrupcao(int teste)
                 mMV1->setR1(processRunning->getR1());
                 mMV1->setR2(processRunning->getR2());
                 // --------------------------------------------------------
-
             }
             else if(teste == 5)
             {
+                std::cout << "Teste TRAP\n";
                 processRunning = nullptr;
             }
         }
@@ -92,17 +94,22 @@ void trataInterrupcao(int teste)
 
 int criaProcesso(const std::string progName)
 {
-    int nPos = cargaProg(progName);
+    PCB * pcb = new PCB();
 
-    if ( nPos < 0 )
-        return nPos;
+    short teste = cargaProg(progName, pcb);
+    if(teste < 0)
+        pcb = nullptr;
     else
     {
-        PCB * pcb = new PCB(nPos, nPos*TAM_PARTICAO, nPos*TAM_PARTICAO + TAM_PARTICAO - 1, READY);
+        pcb->setID(nIDProcesses);
+        pcb->setPC(pcb->getPageTablePos(0) * N_FPOSICOES);
+        pcb->setFrameAtual(pcb->getPageTablePos(0));
         listaReady->push_back(*pcb);
     }
 
-    return 1;
+    nIDProcesses++;
+
+    return teste;
 }
 
 void testaInterrupcao()
@@ -115,7 +122,10 @@ void finalizaProcesso()
 {
     std::cout << "\n\nProcesso " << processRunning->getID() << " terminado.\n";
 
-    liberaParticao(processRunning->getID());
+    for(int i = 0; i < 128; i++)
+        printf("\Memoria<%d>: %#08x\n", i, mMV1->getMEM_Pos(i));
+
+    liberaFrames(processRunning);
 
     processRunning = nullptr;
 }
